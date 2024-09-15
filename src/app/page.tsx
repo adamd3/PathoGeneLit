@@ -1,3 +1,5 @@
+"use client"; 
+
 import { useEffect, useState } from "react";
 
 export default function Home() {
@@ -7,7 +9,7 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/python");
+        const response = await fetch("/api/python");
         if (!response.ok) {
           throw new Error("Failed to fetch data from API");
         }

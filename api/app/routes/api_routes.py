@@ -1,5 +1,8 @@
-from flask import jsonify
+from fastapi import APIRouter
+
+router = APIRouter()
 
 
-def hello_world():
-    return jsonify(message="Hello, World!")
+@router.get("/api/python")
+async def hello_world():
+    return {"message": "Hello, World!"}

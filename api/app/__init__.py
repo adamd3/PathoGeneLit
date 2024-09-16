@@ -1,12 +1,10 @@
-from flask import Flask
-from flask_cors import CORS
-from .routes import api_bp
+from fastapi import FastAPI
+from app.routes import api_routes
 
 
-def create_app():
-    app = Flask(__name__)
-    CORS(app)
+def app() -> FastAPI:
+    app = FastAPI()
 
-    app.register_blueprint(api_bp, url_prefix="/api")
+    app.include_router(api_routes.router)
 
     return app

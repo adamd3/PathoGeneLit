@@ -2,11 +2,22 @@ import traceback
 from tqdm import tqdm
 from helper.cli import cli
 from helper.utils import copy_from_records
-import psycopg2.extras as extras
+import psycopg2
+import os
+from dotenv import load_dotenv
+import pandas as pd
+import requests
+import re
+
+load_dotenv()
+
+
+def chunked_iterable(iterable, chunk_size):
+    for i in range(0, len(iterable), chunk_size):
+        yield iterable[i : min(i + chunk_size, len(iterable))]
 
 
 def import_paper_info(conn):
-    # Find subset to add info to
     with conn.cursor() as cursor:
         cursor.execute(
             """
@@ -20,7 +31,6 @@ def import_paper_info(conn):
         )
         to_ingest = [row[0] for row in cursor.fetchall()]
 
-    # Use information from bulk download metadata table
     if not to_ingest:
         return
 
@@ -32,28 +42,31 @@ def import_paper_info(conn):
     )
     pmc_meta = pmc_meta.loc[to_ingest]
 
-    # Prepare title dictionary
     title_dict = {}
-    for chunk in extras.chunked_iterable(to_ingest, 250):
-        ids_string = ",".join([re.sub(r"^PMC(\d+)$", r"\1", id) for id in chunk])
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    f"""
-                    SELECT pmc AS id, title
-                    FROM pmc_info
-                    WHERE pmc IN ({ids_string})
-                """,
-                    {"pmc_info": pmc_meta},
+    for i in tqdm(range(0, len(to_ingest), 250), "Pulling titles..."):
+        while True:
+            j = 0
+            try:
+                ids_string = ",".join([re.sub(r"^PMC(\d+)$", r"\1", id) for id in to_ingest[i : i + 250]])
+                res = requests.get(
+                    f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pmc&retmode=json&id={ids_string}"
                 )
-                for row in cursor.fetchall():
-                    title_dict[row[0]] = row[1]
-        except Exception as e:
-            traceback.print_exc()
-            print("Error resolving info. Retrying...")
-            continue
+                ids_info = res.json()
+                for id in ids_info["result"]["uids"]:
+                    try:
+                        title_dict[f"PMC{id}"] = ids_info["result"][id]["title"]
+                    except KeyError:
+                        pass
+                break
+            except KeyboardInterrupt:
+                raise
+            except Exception as e:
+                traceback.print_exc()
+                print("Error resolving info. Retrying...")
+                j += 1
+                if j >= 10:
+                    raise RuntimeError(f"Error connecting to E-utilites api...")
 
-    # Insert paper info
     if title_dict:
         copy_from_records(
             conn,
@@ -68,6 +81,7 @@ def import_paper_info(conn):
                         title=title_dict.get(pmc),
                     )
                     for pmc in pmc_meta.index.values
+                    if pmc in title_dict
                 ),
                 total=len(title_dict),
                 desc="Inserting PMC info..",
@@ -77,7 +91,7 @@ def import_paper_info(conn):
 
 @cli.command()
 def ingest_paper_info():
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])  # Assuming you have a connection string in environment variable
+    conn = psycopg2.connect(os.environ["DATABASE_URL"])
     try:
         import_paper_info(conn)
     except:
@@ -86,4 +100,4 @@ def ingest_paper_info():
     else:
         conn.commit()
     finally:
-        conn.close()  # Ensure connection is closed
+        conn.close()

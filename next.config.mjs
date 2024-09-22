@@ -13,4 +13,18 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+const graphqlRewrites = {
+  rewrites: async () => {
+    return [
+      {
+        source: '/api/graphql',
+        destination: 'http://localhost:5328/graphql',
+      },
+    ];
+  },
+};
+
+export default {
+  nextConfig,
+  graphqlRewrites,
+};

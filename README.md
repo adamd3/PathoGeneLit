@@ -14,7 +14,8 @@ the development of PathoGeneLit.
 The code for the data retrieval bot was adapted from the Rummagene bot
 and is used here non-commercially, under the
 [Attribution-NonCommercial-ShareAlike 4.0](https://github.com/MaayanLab/rummagene/blob/main/LICENSE)
-license. It has been adapted to retrieve prokaryote gene lists. Additionally,
+license. It has been adapted to retrieve prokaryote gene lists and populate
+a database with bacteria-specific gene information. Additionally,
 some modifications have been made to the filtering of gene lists (to reduce
 the maximum length allowed, given the smaller genome sizes of bacteria) and
 database provisioning (which is here performed here using pure sql).

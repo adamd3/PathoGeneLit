@@ -1,0 +1,8 @@
+schema: http://127.0.0.1:5000/graphql
+documents: 'src/graphql/**/*.graphql'
+generates:
+  ./src/generated/graphql.tsx:
+    plugins:
+      - typescript
+      - typescript-operations
+      - typescript-react-apollo

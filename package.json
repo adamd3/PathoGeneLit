@@ -8,10 +8,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "postgraphile": "source .env && postgraphile -c postgres://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME} --watch --enhance-graphiql"
+    "postgraphile": "node postgraphile.js",
+    "generate": "graphql-codegen",
+    "start:pg": "node postgraphile.js"
   },
   "dependencies": {
     "@apollo/client": "^3.11.8",
+    "dotenv": "^16.4.5",
     "graphql": "^16.9.0",
     "next": "14.2.11",
     "postgraphile": "^4.13.0",
@@ -19,6 +22,10 @@
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.2",
+    "@graphql-codegen/typescript": "^4.0.9",
+    "@graphql-codegen/typescript-operations": "^4.2.3",
+    "@graphql-codegen/typescript-react-apollo": "^4.3.2",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

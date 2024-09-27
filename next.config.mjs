@@ -1,30 +1,25 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  rewrites: async () => {
+  async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination:
-          process.env.NODE_ENV === 'development'
-            ? 'http://127.0.0.1:5328/api/:path*'
-            : '/api/',
+        source: '/api/python',
+        destination: 'http://127.0.0.1:5328/api/python',
       },
-    ];
-  },
-};
-
-const graphqlRewrites = {
-  rewrites: async () => {
-    return [
       {
         source: '/api/graphql',
         destination: 'http://localhost:5328/graphql',
       },
     ];
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.alias[
+        'next/dist/next-server/lib/router/rewrite-url-for-export'
+      ] = 'debug';
+    }
+    return config;
+  },
 };
 
-export default {
-  nextConfig,
-  graphqlRewrites,
-};
+export default nextConfig;

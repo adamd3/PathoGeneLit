@@ -2,37 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom CSS Variables for a Full Black Theme */
 :root {
-  --background: #ffffff;
-  --foreground: #000000;
-  --primary: #6366f1;
-  /* Indigo */
+  --background: var(--turquoise);
+  --foreground: #ffffff;
+  --primary: #000000;
   --secondary: #1c1c1e;
-  /* Dark Gray */
-  --accent: #4F46E5;
-  /* Darker Indigo */
+  --accent: #ffffff
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #ffffff;
-    --foreground: #000000;
-    --primary: #0c0c0c;
-    --secondary: #1c1c1e;
-    --accent: #818cf8;
-  }
-}
-
-/* Apply Full Black Background and White Font Settings */
 body {
   background-color: var(--background);
   color: var(--foreground);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Fira Code', 'Inter', sans-serif;
   line-height: 1.6;
 }
 
-/* Global text styles */
+code {
+  font-family: 'JetBrains Mono', monospace;
+}
+
 h1,
 h2,
 h3,
@@ -49,7 +37,6 @@ p {
   color: var(--foreground);
 }
 
-/* Links */
 a {
   color: var(--primary);
   text-decoration: none;
@@ -57,29 +44,26 @@ a {
 }
 
 a:hover {
-  color: var(--accent);
+  color: #ffffff;
 }
 
-/* Custom Utility Classes */
+
 @layer utilities {
 
-  /* Text balancing */
   .text-balance {
     text-wrap: balance;
   }
 
-  /* Box shadows */
   .shadow-card {
     box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
   }
 
-  /* Custom button styles */
   .btn-primary {
     @apply bg-indigo-600 text-white font-semibold py-2 px-4 rounded-lg;
     transition: background-color 0.3s ease;
   }
 
   .btn-primary:hover {
-    background-color: var(--accent);
+    background-color: #ffffff;
   }
 }

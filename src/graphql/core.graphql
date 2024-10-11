@@ -13,8 +13,9 @@ query Stats {
   }
 }
 
-query FetchUserGeneSet($id: ID!) {
-  userGeneSet(nodeId: $id) {
+query FetchUserGeneSet($nodeId: ID!) {
+  userGeneSet(nodeId: $nodeId) {
+    id
     genes
     description
   }

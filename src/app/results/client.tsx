@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useEffect } from 'react';
 import {
   FetchUserGeneSetQuery,
   useEnrichmentQueryQuery,
@@ -17,6 +17,7 @@ import Image from 'next/image'
 import GeneSetModal from '@/components/geneSetModal'
 import partition from '@/utils/partition'
 import { FiSearch, FiX, FiDownload } from 'react-icons/fi'
+import { Buffer } from 'buffer';
 
 const pageSize = 10
 
@@ -34,6 +35,11 @@ type GeneSetModalT = {
   id: string,
   description: string,
 } | undefined
+
+function encodeNodeId(tableName: string, id: string): string {
+  const data = JSON.stringify([tableName, id]);
+  return Buffer.from(data).toString('base64');
+}
 
 function description_markdown(text: string) {
   if (!text) return <span className="italic">No description found</span>
@@ -292,12 +298,52 @@ export default function EnrichClientPage({
     dataset: string | string[] | undefined
   },
 }) {
-  const dataset = ensureArray(searchParams.dataset)[0]
-  const { data: userGeneSet } = useFetchUserGeneSetQuery({
+  console.log('EnrichClientPage rendered', { searchParams });
+  
+  const dataset = ensureArray(searchParams.dataset)[0];
+  const nodeId = encodeNodeId('user_gene_sets', dataset);
+
+  console.log('Dataset:', dataset);
+  console.log('Node ID:', nodeId);
+  
+  const { data, loading, error } = useFetchUserGeneSetQuery({
     skip: !dataset,
-    variables: { id: dataset },
-  })
-  const [modalGeneSet, setModalGeneSet] = React.useState<GeneSetModalT>()
+    variables: { nodeId },
+  });
+
+  const [modalGeneSet, setModalGeneSet] = React.useState<GeneSetModalT>();
+
+  useEffect(() => {
+    console.log('FetchUserGeneSet Query Result:', {
+      data: JSON.stringify(data, null, 2),
+      loading,
+      error: error ? error.message : undefined,
+      dataset
+    });
+
+    if (!loading) {
+      if (error) {
+        console.error('FetchUserGeneSet Error:', error);
+      } else if (!data) {
+        console.log('No data returned from FetchUserGeneSet query');
+      } else if (!data.userGeneSet) {
+        console.log('userGeneSet is null in the returned data');
+      } else {
+        console.log('UserGeneSet loaded successfully:', data.userGeneSet);
+      }
+    }
+  }, [loading, error, data, dataset]);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  if (!data || !data.userGeneSet) return <div>No gene set found</div>;
+
+
+  if (!data.userGeneSet) return <div>No gene set found for ID: {dataset}</div>;
+
+  const userGeneSet = data.userGeneSet;
+  const { id, genes, description } = data.userGeneSet;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-6 rounded" role="alert">
@@ -309,18 +355,18 @@ export default function EnrichClientPage({
             onClick={evt => {
               setModalGeneSet({
                 type: 'UserGeneSet',
-                genes: (userGeneSet?.userGeneSet?.genes ?? []).filter((gene): gene is string => !!gene),
-                description: userGeneSet?.userGeneSet?.description || 'Gene set',
+                genes: (userGeneSet.genes ?? []).filter((gene): gene is string => !!gene),
+                description: userGeneSet.description || 'Gene set',
               })
             }}
           >
-            {userGeneSet?.userGeneSet?.description || 'Gene set'}
-            {userGeneSet ? <span className="ml-2">({userGeneSet?.userGeneSet?.genes?.length ?? '?'} genes)</span> : null}
+            {userGeneSet.description || 'Gene set'}
+            {userGeneSet ? <span className="ml-2">({userGeneSet.genes?.length ?? '?'} genes)</span> : null}
           </label>
         </div>
       </div>
-      <EnrichmentResults userGeneSet={userGeneSet} setModalGeneSet={setModalGeneSet} />
+      <EnrichmentResults userGeneSet={data} setModalGeneSet={setModalGeneSet} />
       <GeneSetModalWrapper modalGeneSet={modalGeneSet} setModalGeneSet={setModalGeneSet} />
     </div>
-  )
+  );
 }

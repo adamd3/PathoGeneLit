@@ -169,6 +169,7 @@ async def query(
     offset: int = Query(0, ge=0),
     limit: Optional[int] = Query(None, ge=1),
 ):
+
     if background_id == "latest":
         background_id = persistent_state.latest
     else:

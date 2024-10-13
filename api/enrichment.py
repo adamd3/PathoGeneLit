@@ -14,7 +14,6 @@ import os
 
 router = APIRouter()
 
-
 async def ensure_index(db: asyncpg.Connection, background_id: uuid.UUID):
     if background_id in state.bitmaps:
         return
@@ -38,7 +37,6 @@ async def ensure_index(db: asyncpg.Connection, background_id: uuid.UUID):
         bitmap.columns = {gene_id: i for i, (gene_id, _) in enumerate(background_genes)}
         bitmap.columns_str = [gene for _, gene in background_genes]
 
-        # Use fetchall instead of cursor
         gene_sets = await db.fetch(
             "SELECT id, term, COALESCE(description, '') AS description, hash, gene_ids FROM app_public_v2.gene_set;"
         )
@@ -178,11 +176,9 @@ async def query(
     limit: Optional[int] = None,
     db: asyncpg.Connection = Depends(get_db),
 ):
-    
     print(f"Query received. Background ID: {background_id}")
     print(f"Input gene set size: {len(input_gene_set.genes)}")
     print(f"Filter params: overlap_ge={overlap_ge}, pvalue_le={pvalue_le}, adj_pvalue_le={adj_pvalue_le}")
-
 
     try:
         if background_id == "latest":
@@ -199,19 +195,24 @@ async def query(
     if not bitmap:
         raise HTTPException(status_code=404, detail="Can't find background")
 
-    # Convert input gene set to UUIDs if they're not already
-    # input_gene_set_uuids = [
-    #     uuid.UUID(gene) if isinstance(gene, str) else gene
-    #     for gene in input_gene_set.genes
-    # ]
-    input_gene_set_uuids = [
-        uuid.uuid5(uuid.NAMESPACE_OID, gene) for gene in input_gene_set.genes
-    ]
+    # Look up gene IDs from the database based on symbols
+    gene_symbols = input_gene_set.genes
+    gene_ids = await db.fetch(
+        "SELECT id FROM app_public_v2.gene WHERE symbol = ANY($1::text[])",
+        gene_symbols
+    )
+    # input_gene_set_uuids = [uuid.UUID(row['id']) for row in gene_ids]
+    input_gene_set_uuids = [row['id'] for row in gene_ids]  # No need for UUID conversion
+    
+    print(f"Number of genes found in database: {len(input_gene_set_uuids)}")
     print(f"Sample input UUIDs: {input_gene_set_uuids[:5]}")
-
+    
     input_gene_set = DenseBitVec(bitmap.columns, input_gene_set_uuids)
-    filter_term = filter_term.lower() if filter_term else None
     print(f"Processed input gene set size: {input_gene_set.n}")
+    print(f"Number of columns in bitmap: {len(bitmap.columns)}")
+    print(f"Sample bitmap columns: {list(bitmap.columns.items())[:5]}")
+
+    filter_term = filter_term.lower() if filter_term else None
 
     cache_key = (background_id, tuple(input_gene_set.v), input_gene_set.n)
     if cache_key in state.cache:
@@ -227,8 +228,10 @@ async def query(
                 continue
 
             n_gs_gene_id = len(gene_set.v)
-            a, b = n_overlap, n_user_gene_id - n_overlap
-            c, d = n_gs_gene_id - n_overlap, n_background - b - c + n_overlap
+            a = n_overlap
+            b = n_user_gene_id - n_overlap
+            c = n_gs_gene_id - n_overlap
+            d = n_background - (a + b + c)
             pvalue = state.fisher.get_p_value(a, b, c, d)
 
             if pvalue > pvalue_le:
@@ -246,7 +249,6 @@ async def query(
             )
 
         print(f"Number of results before adjustment: {len(results)}")
-
 
         # Compute adjusted p-values
         pvalues = [result["pvalue"] for result in results]
@@ -281,7 +283,6 @@ async def query(
     range_start = offset
     range_end = min(range_total, offset + (limit or range_total))
     final_results = final_results[range_start:range_end]
-
 
     print(f"Number of final results: {len(final_results)}")
 

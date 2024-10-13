@@ -6,7 +6,7 @@ class SparseBitVec:
         self.v = [background.get(gene_id) for gene_id in gene_set if gene_id in background]
 
 class DenseBitVec:
-    def __init__(self, background: Dict[uuid.UUID, int], gene_set: Union[List[uuid.UUID], List[str]]):
+    def __init__(self, background: Dict[uuid.UUID, int], gene_set: List[Union[uuid.UUID, str]]):
         self.v = [0] * len(background)
         self.n = 0
         for gene_id in gene_set:

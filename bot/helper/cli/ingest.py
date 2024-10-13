@@ -6,8 +6,12 @@ from helper.utils import copy_from_records
 import psycopg2
 import os
 from dotenv import load_dotenv
+import json
+import uuid
+import re
 
 load_dotenv()
+
 
 
 def import_gene_set_library(
@@ -16,10 +20,6 @@ def import_gene_set_library(
     prefix="",
     postfix="",
 ):
-    import re
-    import json
-    import uuid
-
     # fetch the gene_set, gather the background genes
     new_gene_sets = []
     background_genes = set()
@@ -37,12 +37,13 @@ def import_gene_set_library(
                 for cleaned_gene in (re.split(r"[;,:\s]", raw_gene)[0],)
                 if cleaned_gene
             ]
+            gene_set_hash = uuid.uuid4()  # Using UUID4 for gene set hash
             new_gene_sets.append(
                 dict(
                     term=prefix + term + postfix,
                     description=description,
                     genes=genes,
-                    hash=uuid.uuid5(uuid.UUID("00000000-0000-0000-0000-000000000000"), "\t".join(sorted(set(genes)))),
+                    hash=gene_set_hash,
                 )
             )
             background_genes.update(genes)
@@ -58,15 +59,12 @@ def import_gene_set_library(
             [list(background_genes)],
         )
         gene_map = cursor.fetchone()[0]
-    # gene_map = json.loads(gene_map)
-
-    # print(background_genes)
 
     # upsert any new genes not in the mapping & add them to the mapping
     new_genes = {
         id: dict(id=id, symbol=gene)
         for gene in tqdm(background_genes - gene_map.keys(), desc="Preparing new genes...")
-        for id in (str(uuid.uuid4()),)
+        for id in (str(uuid.uuid4()),)  # Using UUID4 for new gene IDs
     }
     if new_genes:
         copy_from_records(
@@ -105,9 +103,6 @@ def import_gene_set_library(
         ),
         on_conflict_update=("term",),
     )
-
-    # with conn.cursor() as cursor:
-    #     cursor.execute("REFRESH MATERIALIZED VIEW CONCURRENTLY app_public_v2.gene_set_pmc")
 
     with conn.cursor() as cursor:
         cursor.execute("REFRESH MATERIALIZED VIEW app_public_v2.gene_set_pmc")

@@ -5,9 +5,10 @@ import os
 
 load_dotenv()
 
+ENRICH_URL = os.getenv("ENRICH_URL", "http://127.0.0.1:5328")
 
 @cli.command()
-@click.option("--enrich-url", envvar="ENRICH_URL", default="http://127.0.0.1:8000")
+@click.option("--enrich-url", envvar="ENRICH_URL", default=ENRICH_URL)
 def update_background(enrich_url):
     """A background is tied to a complete set of genes across all gene sets
     but also to a computed index in the enrich API. This function creates a
@@ -38,18 +39,16 @@ def update_background(enrich_url):
         new_background = cursor.fetchone()[0]
         conn.commit()
 
-        # # Trigger index creation for the new background via API
-        # response = requests.get(f"{enrich_url}/{new_background}")
-        # assert response.ok, "Failed to trigger index creation for new background"
+        ## Trigger index creation for the new background via API
+        response = requests.get(f"{enrich_url}/{new_background}")
+        assert response.ok, "Failed to trigger index creation for new background"
 
         # Remove old backgrounds from the database
         cursor.execute("DELETE FROM app_public_v2.background WHERE id = ANY(%s::uuid[])", (current_backgrounds,))
         conn.commit()
 
-        # # TODO: when enrich API is ready, uncomment this block
-        # # Remove index for the old backgrounds via API
-        # for current_background in current_backgrounds:
-        #     requests.delete(f"{enrich_url}/{current_background}")
+        for current_background in current_backgrounds:
+            requests.delete(f"{enrich_url}/{current_background}")
 
     except Exception as e:
         conn.rollback()

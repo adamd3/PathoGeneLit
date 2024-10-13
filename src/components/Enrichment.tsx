@@ -3,7 +3,6 @@ import React from 'react'
 import example from '../app/example.json'
 import uniqueArray from '@/utils/uniqueArray'
 import { useAddUserGeneSetMutation } from '@/generated/graphql'
-import classNames from 'classnames'
 import { useRouter } from 'next/navigation'
 import { FiUpload, FiSend } from 'react-icons/fi'
 
@@ -52,28 +51,7 @@ const Enrichment = () => {
             router.push(`/results?dataset=${id}`)
           }
         }}
-      //   onSubmit={async (evt) => {
-      //         evt.preventDefault()
-      //         console.log('Submitting gene set:', genes);
-      //         try {
-      //           const result = await addUserGeneSetMutation({
-      //             variables: {
-      //               genes,
-      //             }
-      //           })
-      //           console.log('Mutation result:', result);
-      //           const id = result.data?.addUserGeneSet?.userGeneSet?.id
-      //           if (id) {
-      //             console.log('Redirecting to results with ID:', id);
-      //             router.push(`/results?dataset=${id}`)
-      //           } else {
-      //             console.error('No ID returned from mutation');
-      //           }
-      //         } catch (error) {
-      //           console.error('Error adding gene set:', error);
-      //         }
-      // }}
-            >
+       >
         <div className="space-y-2">
           <textarea
             value={rawGenes}

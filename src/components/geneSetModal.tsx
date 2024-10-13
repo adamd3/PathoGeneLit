@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import classNames from 'classnames'
 import blobTsv from '@/utils/blobTsv'
 import clientDownloadBlob from '@/utils/clientDownloadBlob'
+import { FiDownload, FiCopy } from 'react-icons/fi';
 
 function ExpandableText({ text }: { text: string }) {
     const [more, setMore] = React.useState(false)
@@ -12,114 +13,87 @@ function ExpandableText({ text }: { text: string }) {
     return <>
         {more ? text : startText}
         &nbsp;
-        {more ? <button className="text-blue-500" onClick={() => setMore(() => false)}>Show Less</button>
-        : <button className="text-blue-500" onClick={() => setMore(() => true)}>Show More</button>}
+        {more ? <button className="text-medium-purple" onClick={() => setMore(() => false)}>Show Less</button>
+        : <button className="text-medium-purple" onClick={() => setMore(() => true)}>Show More</button>}
     </>
 }
 
-export default function GeneSetModal({ geneset, term, showModal, setShowModal }: { geneset?: ({ gene?: string | null, symbol?: string | null, ncbi_gene_id?: number | null, description?: string | null, summary?: string | null } | null | undefined)[] | undefined, term: string | null | undefined, showModal?: boolean, setShowModal: (show: boolean) => void }) {
-    const ref = React.useRef<HTMLDialogElement>(null)
-    const router = useRouter()
-    const [addUserGeneSetMutation, { loading, error }] = useAddUserGeneSetMutation()
-    const genes = React.useMemo(() => geneset?.filter((gene): gene is Exclude<typeof gene, null | undefined> & { symbol: string } => !!gene?.symbol).map(({ symbol }) => symbol), [geneset])
-    React.useEffect(() => {
-        if (!ref.current) return
-        ref.current.addEventListener('close', () => setShowModal(false))
-    }, [ref, setShowModal])
-    React.useEffect(() => {
-        if (!ref.current) return
-        if (showModal) ref.current.showModal()
-    }, [ref, showModal])
-    return (
-        <>
-            <dialog className="modal" ref={ref}>
-                <div className="modal-box w-11/12 max-w-screen-xl h-5/6 overflow-hidden flex flex-col p-0">
-                    <p className="text-md text-center text-gray-900 dark:text-white flex-shrink-0 py-2">
-                        Gene Set  ({geneset ? geneset?.length : 'n'})
-                    </p>
-                    <p className="text-md text-center text-gray-600 dark:text-white">{term}</p>
-                    <div className={classNames("p-2 text-slate-500 text-sm leading-relaxed whitespace-pre-line overflow-hidden flex flex-grow flex-shrink")}>
-                        {geneset ?
-                            <div className="overflow-x-auto block">
-                                <table className="table table-xs table-pin-rows table-pin-cols">
-                                    <thead className="bg-white sticky top-0">
-                                        <th>&nbsp;</th>
-                                        <th>Symbol</th>
-                                        <th>Description</th>
-                                        <th>Summary</th>
-                                    </thead>
-                                    <tbody className="overflow-y-auto">
-                                        {geneset.filter((gene): gene is Exclude<typeof gene, null | undefined> & { symbol: string } => !!gene?.symbol).map(gene =>
-                                            <tr key={gene.symbol}>
-                                                <td>{gene.gene}</td>
-                                                <td className="font-bold">{gene.symbol}</td>
-                                                <td>{gene.description}</td>
-                                                <td><ExpandableText text={gene.summary ?? ''} /></td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        : <div className="w-full flex justify-center"><span className='loading loading-ring w-24'></span></div>
-                        }
-                    </div>
+const GeneSetModal = ({ geneset, term, showModal, setShowModal }) => {
+  const modalRef = React.useRef(null);
+  const genes = React.useMemo(() => geneset?.filter((gene): gene is Exclude<typeof gene, null | undefined> & { symbol: string } => !!gene?.symbol).map(({ symbol }) => symbol), [geneset])
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        setShowModal(false);
+      }
+    };
 
-                    <div className="flex items-center justify-end border-t border-solid border-slate-200 flex-shrink-0 gap-2 p-3">
+    if (showModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
 
-                        <button
-                            className="btn btn-sm btn-outline text-xs"
-                            type="button"
-                            onClick={(evt) => {
-                                if (!geneset) return
-                                const blob = blobTsv(['symbol', 'description', 'summary'], geneset, item => ({
-                                  symbol: item?.symbol,
-                                  description: item?.description,
-                                  summary: item?.summary,
-                                }))
-                                clientDownloadBlob(blob, `${term ? term : 'gene_set'}.tsv`)
-                            }}
-                        >
-                            Download Table
-                        </button>
-                        <button
-                            className="btn btn-sm btn-outline text-xs transition-colors duration-500"
-                            type="button"
-                            onClick={(evt) => {
-                                const currentRef = evt.currentTarget
-                                const currentColor = currentRef.style.backgroundColor
-                                currentRef.style.backgroundColor = 'green'
-                                setTimeout(() => {currentRef.style.backgroundColor = currentColor}, 500)
-                                navigator.clipboard.writeText(genes?.join('\n') || '')
-                            }}
-                        >
-                            Copy Symbols to Clipboard
-                        </button>
-                        <button
-                            className="btn btn-sm btn-outline text-xs"
-                            type="button"
-                            onClick={async (evt) => {
-                                evt.preventDefault()
-                                const result = await addUserGeneSetMutation({
-                                    variables: {
-                                        genes,
-                                        description: term,
-                                    }
-                                })
-                                const id = result.data?.addUserGeneSet?.userGeneSet?.id
-                                if (id) {
-                                    router.push(`/enrich?dataset=${id}`)
-                                }
-                            }}>
-                            Enrich on Rummagene
-                        </button>
-                        <span className={classNames("loading", "w-6", { 'hidden': !loading })}></span>
-                        <div className={classNames("alert alert-error", { 'hidden': !error })}>{error?.message ?? null}</div>
-                    </div>
-                </div>
-                <form method="dialog" className="modal-backdrop">
-                    <button>close</button>
-                </form>
-            </dialog>
-        </>
-    )
-}
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showModal, setShowModal]);
+
+  if (!showModal) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div ref={modalRef} className="bg-white text-black rounded-lg shadow-xl w-11/12 max-w-4xl h-5/6 flex flex-col">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-2xl font-bold text-black">Gene Set ({geneset?.length || 'n'})</h2>
+          <p className="text-gray-600">{term}</p>
+        </div>
+        <div className="flex-grow overflow-hidden p-4">
+          <div className="overflow-x-auto h-full">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Gene ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Gene name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider sticky top-0 bg-gray-50 z-10">Description</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {geneset?.map((gene, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">{gene.gene}</td>
+                    <td className="px-6 py-4 whitespace-nowrap font-medium">{gene.symbol}</td>
+                    <td className="px-6 py-4">{gene.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
+          <button className="btn btn-outline btn-sm flex items-center" onClick={() => {
+                if (!geneset) return
+                const blob = blobTsv(['symbol', 'description'], geneset, item => ({
+                    gene: item?.gene,
+                    gene_name: item?.symbol,
+                    description: item?.description,
+                }))
+                clientDownloadBlob(blob, `${term ? term : 'gene_set'}.tsv`)
+          }}>
+            <FiDownload className="mr-2" /> Download Table
+          </button>
+          <button className="btn btn-outline btn-sm flex items-center" onClick={(evt) => {
+                const currentRef = evt.currentTarget
+                const currentColor = currentRef.style.backgroundColor
+                currentRef.style.backgroundColor = 'green'
+                setTimeout(() => {currentRef.style.backgroundColor = currentColor}, 500)
+                navigator.clipboard.writeText(genes?.join('\n') || '')
+          }}>
+            <FiCopy className="mr-2" /> Copy gene names
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => setShowModal(false)}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default GeneSetModal;
